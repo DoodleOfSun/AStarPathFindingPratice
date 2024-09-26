@@ -14,9 +14,10 @@ public class AStar : MonoBehaviour
         public Vector2 connection;
         public bool isWall;
 
-        public Cell(Vector2 pos)
+        public Cell(Vector2 pos, bool wall)
         {
             position = pos;
+            isWall = wall;
         }
     }
 
@@ -27,9 +28,9 @@ public class AStar : MonoBehaviour
     public GameObject target;
     
 
-    private List<Vector2> cellsToSearch;
-    private List<Vector2> searchedCells;
-    private List<Vector2> finalPath;
+    private List<Vector2> cellsToSearch;        // 앞으로 찾아내야 할 셀
+    private List<Vector2> searchedCells;        // 이미 조사한 셀 위치
+    private List<Vector2> finalPath;            // 찾아낸 최적화된 길
 
     private Dictionary<Vector2, Cell> cells;
 
@@ -42,34 +43,28 @@ public class AStar : MonoBehaviour
 
     void Update()
     {
-        FindPath(transform.position, target.transform.position);
+        FindPath(new Vector2((int)transform.position.x, (int)transform.position.y), new Vector2((int)target.transform.position.x, (int)target.transform.position.y));
     }
 
     
     private void InitCells()
     {
-        BoundsInt bounds = blockingTile.cellBounds;
-        TileBase[] allTiles = blockingTile.GetTilesBlock(bounds);
         cells = new Dictionary<Vector2, Cell>();
 
-        for (int x = 0; x < bounds.size.x; x++)
+        foreach (var pos in blockingTile.cellBounds.allPositionsWithin)
         {
-            for (int y = 0; y < bounds.size.y; y++)
+            Vector3Int localPlace = new Vector3Int(pos.x, pos.y, pos.z);
+            Vector3 place = blockingTile.CellToWorld(localPlace);
+            if (blockingTile.HasTile(localPlace))
             {
-                // 모든 x,y 좌표에 Add
-                Vector2 pos = new Vector2(x, y);
-                cells.Add(pos, new Cell(pos));
-
-
-                // 이 중에 tile이 null이 아니면 타일이 있다는 뜻이므로 이 좌표에 있는 타일의 isWall을 True로 초기화
-                TileBase tile = allTiles[x + y * bounds.size.x];
-                if (tile != null)
-                {
-                    cells[pos].isWall = true;
-                }
-
+                cells.Add(place, new Cell(place, true));
+            }
+            else
+            {
+                cells.Add(place, new Cell(place, false));
             }
         }
+
     }
 
     private void FindPath(Vector2 startPos, Vector2 endPos)
@@ -84,6 +79,7 @@ public class AStar : MonoBehaviour
         startCell.hCost = GetDistance(startPos, endPos);
         startCell.fCost = GetDistance(startPos, endPos);
 
+        
         while (cellsToSearch.Count > 0)
         {
             Vector2 cellToSearch = cellsToSearch[0];
@@ -98,10 +94,13 @@ public class AStar : MonoBehaviour
                 }
             }
 
+
             cellsToSearch.Remove(cellToSearch);
             searchedCells.Add(cellToSearch);
+
             if (cellToSearch == endPos)
             {
+                Debug.Log("cellToSearch == endPos");
                 Cell pathCell = cells[endPos];
 
                 while (pathCell.position != startPos)
@@ -179,13 +178,21 @@ public class AStar : MonoBehaviour
                 Gizmos.color = Color.black;
             }
 
+            
             if (finalPath.Contains(kvp.Key))
             {
                 Gizmos.color = Color.magenta;
             }
+            
+            
 
-            Gizmos.DrawCube(kvp.Key + (Vector2)transform.position, new Vector3(cellWidth, cellHeight));
+            Vector2 gridTransform = transform.position;
+            gridTransform.x += (float)0.5;
+            gridTransform.y += (float)0.5;
+
+            Gizmos.DrawCube(kvp.Key + gridTransform, new Vector3(cellWidth, cellHeight));
         }
+
 
     }
 }
