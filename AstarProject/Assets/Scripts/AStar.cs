@@ -1,10 +1,9 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.UIElements;
-using Random = UnityEngine.Random;
+using UnityEngine.Tilemaps;
 
-public class AStarExample : MonoBehaviour
+public class AStar : MonoBehaviour
 {
     private class Cell
     {
@@ -21,64 +20,61 @@ public class AStarExample : MonoBehaviour
         }
     }
 
-    [SerializeField] private int gridHeight;
-    [SerializeField] private int gridWidth;
-    [SerializeField] private float cellHeight = 1f;
-    [SerializeField] private float cellWidth = 1f;
 
-    [SerializeField] private List<Vector2> cellsToSearch;
-    [SerializeField] private List<Vector2> searchedCells;
-    [SerializeField] private List<Vector2> finalPath;
+    public Tilemap blockingTile;
+    public int cellWidth;
+    public int cellHeight;
+    public GameObject target;
+    
 
-    [SerializeField] private bool generatePath;
-    [SerializeField] private bool visualiseGrid;
-
-    private bool pathGenerated;
+    private List<Vector2> cellsToSearch;
+    private List<Vector2> searchedCells;
+    private List<Vector2> finalPath;
 
     private Dictionary<Vector2, Cell> cells;
 
-    void Update()
+    private bool pathGenerated;
+
+    void Start()
     {
-        if (generatePath && !pathGenerated)
-        {
-            GenerateGrid();
-
-            // FindPath Get a Parameter For Vecotr 2 Start position And End Position
-            FindPath(new Vector2(0, 1), new Vector2(5, 7));
-
-            pathGenerated = true;
-        }
-        else if (!generatePath)
-        {
-            pathGenerated = false;
-        }
+        InitCells();
     }
 
-    private void GenerateGrid()
+    void Update()
     {
-        // Grid 관리를 위해 딕셔너리 cells를 생성
+        FindPath(transform.position, target.transform.position);
+    }
+
+    
+    private void InitCells()
+    {
+        BoundsInt bounds = blockingTile.cellBounds;
+        TileBase[] allTiles = blockingTile.GetTilesBlock(bounds);
         cells = new Dictionary<Vector2, Cell>();
 
-        // Grid의 각각 가로와 세로만큼 반복문 돌려서 cells 딕셔너리 초기화
-        for (float x = 0; x < gridWidth; x+= cellWidth)
+        for (int x = 0; x < bounds.size.x; x++)
         {
-            for (float y = 0; y < gridHeight; y += cellHeight)
+            for (int y = 0; y < bounds.size.y; y++)
             {
+                // 모든 x,y 좌표에 Add
                 Vector2 pos = new Vector2(x, y);
                 cells.Add(pos, new Cell(pos));
+
+
+                // 이 중에 tile이 null이 아니면 타일이 있다는 뜻이므로 이 좌표에 있는 타일의 isWall을 True로 초기화
+                TileBase tile = allTiles[x + y * bounds.size.x];
+                if (tile != null)
+                {
+                    cells[pos].isWall = true;
+                }
+
             }
-        }
-        
-        // 벽 생성
-        for (int i = 0; i < 40; i++)
-        {
-            Vector2 pos = new Vector2(Random.Range(0, gridWidth), Random.Range(0, gridHeight));
-            cells[pos].isWall = true;
         }
     }
 
     private void FindPath(Vector2 startPos, Vector2 endPos)
     {
+        
         searchedCells = new List<Vector2>();
         cellsToSearch = new List<Vector2> { startPos };
         finalPath = new List<Vector2>();
@@ -95,7 +91,7 @@ public class AStarExample : MonoBehaviour
             foreach (Vector2 pos in cellsToSearch)
             {
                 Cell c = cells[pos];
-                if (c.fCost < cells[cellToSearch].fCost || 
+                if (c.fCost < cells[cellToSearch].fCost ||
                     c.fCost == cells[cellToSearch].fCost && c.hCost == cells[cellToSearch].hCost)
                 {
                     cellToSearch = pos;
@@ -119,7 +115,19 @@ public class AStarExample : MonoBehaviour
             }
             SearchCellNeighbors(cellToSearch, endPos);
         }
+        
+    }
 
+    private int GetDistance(Vector2 pos1, Vector2 pos2)
+    {
+        Vector2Int dist = new Vector2Int(Mathf.Abs((int)pos1.x - (int)pos2.x), Mathf.Abs((int)pos1.y - (int)pos2.y));
+
+        int lowest = Mathf.Min(dist.x, dist.y);
+        int highest = Mathf.Max(dist.x, dist.y);
+
+        int horizontalMoveRequired = highest - lowest;
+
+        return lowest * 14 + horizontalMoveRequired * 10;
     }
 
     private void SearchCellNeighbors(Vector2 cellPos, Vector2 endPos)
@@ -151,27 +159,15 @@ public class AStarExample : MonoBehaviour
         }
     }
 
-    private int GetDistance(Vector2 pos1, Vector2 pos2)
-    {
-        Vector2Int dist = new Vector2Int(Mathf.Abs((int)pos1.x - (int)pos2.x), Mathf.Abs((int)pos1.y - (int)pos2.y));
-
-        int lowest = Mathf.Min(dist.x, dist.y);
-        int highest = Mathf.Max(dist.x, dist.y);
-
-        int horizontalMoveRequired = highest - lowest;
-
-        return lowest * 14 + horizontalMoveRequired * 10;
-    }
-
     // 알고리즘 가시화
     private void OnDrawGizmos()
     {
-        if (!visualiseGrid || cells == null)
+        if (cells == null)
         {
             return;
         }
 
-        foreach (KeyValuePair <Vector2, Cell> kvp in cells)
+        foreach (KeyValuePair<Vector2, Cell> kvp in cells)
         {
 
             if (!kvp.Value.isWall)
@@ -192,5 +188,4 @@ public class AStarExample : MonoBehaviour
         }
 
     }
-    
 }
