@@ -26,6 +26,7 @@ public class AStar : MonoBehaviour
     public int cellWidth;
     public int cellHeight;
     public GameObject target;
+    public GameObject unit;
     
 
     private List<Vector2> cellsToSearch;        // 앞으로 찾아내야 할 셀
@@ -34,27 +35,54 @@ public class AStar : MonoBehaviour
 
     private Dictionary<Vector2, Cell> cells;
 
-    private bool pathGenerated;
-
     void Start()
     {
-        InitCells();
+        Initialize(truncatedPos(unit.transform.position), truncatedPos(target.transform.position));
     }
 
     void Update()
     {
-        FindPath(new Vector2((int)transform.position.x, (int)transform.position.y), new Vector2((int)target.transform.position.x, (int)target.transform.position.y));
+        FindPath(truncatedPos(unit.transform.position), truncatedPos(target.transform.position));
     }
 
-    
-    private void InitCells()
+    private Vector2 truncatedPos(Vector3 pos)
     {
+        float truncatedX = (int)pos.x;
+        float truncatedY = (int)pos.y;
+
+        if (truncatedX >= 0)
+        {
+            truncatedX += 0.5f;
+        }
+        else
+        {
+            truncatedX -= 0.5f;
+        }
+
+        if (truncatedY >= 0)
+        {
+            truncatedY += 0.5f;
+        }
+        else
+        {
+            truncatedY -= 0.5f;
+        }
+        
+        return new Vector2(truncatedX, truncatedY);
+    }
+
+    private void Initialize(Vector2 startPos, Vector2 endPos)
+    {
+        searchedCells = new List<Vector2>();
+        cellsToSearch = new List<Vector2> { startPos };
+        finalPath = new List<Vector2>();
+
         cells = new Dictionary<Vector2, Cell>();
 
         foreach (var pos in blockingTile.cellBounds.allPositionsWithin)
         {
             Vector3Int localPlace = new Vector3Int(pos.x, pos.y, pos.z);
-            Vector3 place = blockingTile.CellToWorld(localPlace);
+            Vector3 place = blockingTile.CellToWorld(localPlace) + new Vector3(0.5f, 0.5f, 0f);
             if (blockingTile.HasTile(localPlace))
             {
                 cells.Add(place, new Cell(place, true));
@@ -64,22 +92,16 @@ public class AStar : MonoBehaviour
                 cells.Add(place, new Cell(place, false));
             }
         }
-
     }
 
     private void FindPath(Vector2 startPos, Vector2 endPos)
     {
-        
-        searchedCells = new List<Vector2>();
-        cellsToSearch = new List<Vector2> { startPos };
-        finalPath = new List<Vector2>();
 
         Cell startCell = cells[startPos];
         startCell.gCost = 0;
         startCell.hCost = GetDistance(startPos, endPos);
         startCell.fCost = GetDistance(startPos, endPos);
 
-        
         while (cellsToSearch.Count > 0)
         {
             Vector2 cellToSearch = cellsToSearch[0];
@@ -100,7 +122,6 @@ public class AStar : MonoBehaviour
 
             if (cellToSearch == endPos)
             {
-                Debug.Log("cellToSearch == endPos");
                 Cell pathCell = cells[endPos];
 
                 while (pathCell.position != startPos)
@@ -112,6 +133,7 @@ public class AStar : MonoBehaviour
                 finalPath.Add(startPos);
                 return;
             }
+
             SearchCellNeighbors(cellToSearch, endPos);
         }
         
@@ -177,20 +199,14 @@ public class AStar : MonoBehaviour
             {
                 Gizmos.color = Color.black;
             }
-
+            
             
             if (finalPath.Contains(kvp.Key))
             {
                 Gizmos.color = Color.magenta;
             }
-            
-            
 
-            Vector2 gridTransform = transform.position;
-            gridTransform.x += (float)0.5;
-            gridTransform.y += (float)0.5;
-
-            Gizmos.DrawCube(kvp.Key + gridTransform, new Vector3(cellWidth, cellHeight));
+            Gizmos.DrawCube(kvp.Key + (Vector2)transform.position, new Vector3(cellWidth, cellHeight));
         }
 
 
