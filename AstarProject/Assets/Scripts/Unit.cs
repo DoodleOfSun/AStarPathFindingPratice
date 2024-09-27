@@ -18,23 +18,29 @@ public class Unit : AStar
     void Start()
     {
         rb2D = GetComponent<Rigidbody2D>();
-        FindPath(truncatedPos(this.transform.position), truncatedPos(target.transform.position));
-        lastTargetPos = target.transform.position;
-        StartCoroutine(moveObject());
-        finalPath.Reverse();
+        Init();
     }
 
     void Update()
     {
 
         // 타겟이 움직였을 경우 알고리즘의 생성과 패스파인딩을 다시 시행한다.
-        /*
-        if (checkingIsTargetMoved())
-        {
-            FindPath(truncatedPos(this.transform.position), truncatedPos(target.transform.position));
-            lastTargetPos = target.transform.position;
-        }*/
+        isTargetMoved = checkingIsTargetMoved();
 
+        if (isTargetMoved)
+        {
+            Init();
+            isTargetMoved = false;
+        }
+
+    }
+
+    private void Init()
+    {
+        FindPath(truncatedPos(this.transform.position), truncatedPos(target.transform.position));
+        lastTargetPos = target.transform.position;
+        StartCoroutine(moveObject());
+        finalPath.Reverse();
     }
 
     IEnumerator moveObject()
@@ -50,18 +56,6 @@ public class Unit : AStar
     {
         while (truncatedPos(transform.position) != finalPath[i])
         {
-            // 움직이는 위치가 대각선인 경우 처리
-            /*
-            if ()
-            {
-
-            }
-            else
-            {
-                rb2D.MovePosition(Vector3.MoveTowards(transform.position, finalPath[i], moveSpeed * Time.deltaTime));
-                yield return null;
-            }
-            */
 
             rb2D.MovePosition(Vector3.MoveTowards(transform.position, finalPath[i], moveSpeed * Time.deltaTime));
             yield return null;
