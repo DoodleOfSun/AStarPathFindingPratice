@@ -5,7 +5,7 @@ using UnityEngine.Tilemaps;
 
 public class AStar : MonoBehaviour
 {
-    private class Cell
+    public class Cell
     {
         public Vector2 position;
         public int fCost = int.MaxValue;
@@ -25,32 +25,27 @@ public class AStar : MonoBehaviour
     public Tilemap blockingTile;
     public int cellWidth;
     public int cellHeight;
-    public GameObject target;
-    public GameObject unit;
-    
 
     private List<Vector2> cellsToSearch;        // 앞으로 찾아내야 할 셀
     private List<Vector2> searchedCells;        // 이미 조사한 셀 위치
-    private List<Vector2> finalPath;            // 찾아낸 최적화된 길
+    protected List<Vector2> finalPath;            // 찾아낸 최적화된 길
 
-    private Dictionary<Vector2, Cell> cells;
+    protected Dictionary<Vector2, Cell> cells;    // 타일맵을 딕셔너리로 관리
 
-    void Start()
-    {
-        Initialize(truncatedPos(unit.transform.position), truncatedPos(target.transform.position));
-    }
-
-    void Update()
-    {
-        FindPath(truncatedPos(unit.transform.position), truncatedPos(target.transform.position));
-    }
-
-    private Vector2 truncatedPos(Vector3 pos)
+    protected Vector2 truncatedPos(Vector3 pos)
     {
         float truncatedX = (int)pos.x;
         float truncatedY = (int)pos.y;
 
-        if (truncatedX >= 0)
+        if (truncatedX > 0)
+        {
+            truncatedX += 0.5f;
+        }
+        else if(truncatedX < 0)
+        {
+            truncatedX -= 0.5f;
+        }
+        else if (truncatedX == 0 && pos.x > 0)
         {
             truncatedX += 0.5f;
         }
@@ -59,7 +54,15 @@ public class AStar : MonoBehaviour
             truncatedX -= 0.5f;
         }
 
-        if (truncatedY >= 0)
+        if (truncatedY > 0)
+        {
+            truncatedY += 0.5f;
+        }
+        else if (truncatedY < 0)
+        {
+            truncatedY -= 0.5f;
+        }
+        else if (truncatedY == 0 && pos.y > 0)
         {
             truncatedY += 0.5f;
         }
@@ -67,12 +70,17 @@ public class AStar : MonoBehaviour
         {
             truncatedY -= 0.5f;
         }
-        
+
+        Debug.Log(truncatedX);
+        Debug.Log(truncatedY);
+
         return new Vector2(truncatedX, truncatedY);
     }
 
-    private void Initialize(Vector2 startPos, Vector2 endPos)
+
+    protected void FindPath(Vector2 startPos, Vector2 endPos)
     {
+
         searchedCells = new List<Vector2>();
         cellsToSearch = new List<Vector2> { startPos };
         finalPath = new List<Vector2>();
@@ -92,10 +100,6 @@ public class AStar : MonoBehaviour
                 cells.Add(place, new Cell(place, false));
             }
         }
-    }
-
-    private void FindPath(Vector2 startPos, Vector2 endPos)
-    {
 
         Cell startCell = cells[startPos];
         startCell.gCost = 0;
@@ -139,7 +143,7 @@ public class AStar : MonoBehaviour
         
     }
 
-    private int GetDistance(Vector2 pos1, Vector2 pos2)
+    protected int GetDistance(Vector2 pos1, Vector2 pos2)
     {
         Vector2Int dist = new Vector2Int(Mathf.Abs((int)pos1.x - (int)pos2.x), Mathf.Abs((int)pos1.y - (int)pos2.y));
 
@@ -151,7 +155,7 @@ public class AStar : MonoBehaviour
         return lowest * 14 + horizontalMoveRequired * 10;
     }
 
-    private void SearchCellNeighbors(Vector2 cellPos, Vector2 endPos)
+    protected void SearchCellNeighbors(Vector2 cellPos, Vector2 endPos)
     {
         for (float x = cellPos.x - cellWidth; x <= cellWidth + cellPos.x; x += cellHeight)
         {
@@ -178,37 +182,5 @@ public class AStar : MonoBehaviour
                 }
             }
         }
-    }
-
-    // 알고리즘 가시화
-    private void OnDrawGizmos()
-    {
-        if (cells == null)
-        {
-            return;
-        }
-
-        foreach (KeyValuePair<Vector2, Cell> kvp in cells)
-        {
-
-            if (!kvp.Value.isWall)
-            {
-                Gizmos.color = Color.white;
-            }
-            else
-            {
-                Gizmos.color = Color.black;
-            }
-            
-            
-            if (finalPath.Contains(kvp.Key))
-            {
-                Gizmos.color = Color.magenta;
-            }
-
-            Gizmos.DrawCube(kvp.Key + (Vector2)transform.position, new Vector3(cellWidth, cellHeight));
-        }
-
-
     }
 }
