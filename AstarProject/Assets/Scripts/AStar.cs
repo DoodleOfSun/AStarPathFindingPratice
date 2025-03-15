@@ -21,6 +21,7 @@ public class AStar : MonoBehaviour
         }
     }
 
+    public bool isSerching4Cells;
 
     public Tilemap blockingTile;
     public int cellWidth;
@@ -32,6 +33,12 @@ public class AStar : MonoBehaviour
 
     protected Dictionary<Vector2, Cell> cells;    // 타일맵을 딕셔너리로 관리
 
+    protected virtual void Start()
+    {
+        //isSerching4Cells = false;
+    }
+
+    // 0.5씩 더하거나 빼서 중간으로 맞춰주는 함수
     protected Vector2 truncatedPos(Vector3 pos)
     {
         float truncatedX = (int)pos.x;
@@ -71,16 +78,12 @@ public class AStar : MonoBehaviour
             truncatedY -= 0.5f;
         }
 
-        Debug.Log(truncatedX);
-        Debug.Log(truncatedY);
-
         return new Vector2(truncatedX, truncatedY);
     }
 
 
     protected void FindPath(Vector2 startPos, Vector2 endPos)
     {
-
         searchedCells = new List<Vector2>();
         cellsToSearch = new List<Vector2> { startPos };
         finalPath = new List<Vector2>();
@@ -145,6 +148,7 @@ public class AStar : MonoBehaviour
 
     protected int GetDistance(Vector2 pos1, Vector2 pos2)
     {
+        // 휴리스틱 추정을 위한 거리 계산
         Vector2Int dist = new Vector2Int(Mathf.Abs((int)pos1.x - (int)pos2.x), Mathf.Abs((int)pos1.y - (int)pos2.y));
 
         int lowest = Mathf.Min(dist.x, dist.y);
@@ -157,11 +161,21 @@ public class AStar : MonoBehaviour
 
     protected void SearchCellNeighbors(Vector2 cellPos, Vector2 endPos)
     {
-        for (float x = cellPos.x - cellWidth; x <= cellWidth + cellPos.x; x += cellHeight)
+        // Grid 내에서 상하좌우 4칸만 검색하는 경우
+        if (isSerching4Cells)
         {
-            for (float y = cellPos.y - cellHeight; y <= cellHeight + cellPos.y; y += cellHeight)
+            Vector2[] serchingDirections = new Vector2[]
             {
-                Vector2 neighborPos = new Vector2(x, y);
+            new Vector2(cellWidth, 0),
+            new Vector2(-cellWidth, 0),
+            new Vector2(0, cellHeight),
+            new Vector2(0, -cellHeight)
+            };
+
+            foreach (var dir in serchingDirections)
+            {
+                Vector2 neighborPos = cellPos + dir;
+
                 if (cells.TryGetValue(neighborPos, out Cell c) && !searchedCells.Contains(neighborPos) && !cells[neighborPos].isWall)
                 {
                     int GcostToNeighbor = cells[cellPos].gCost + GetDistance(cellPos, neighborPos);
@@ -177,6 +191,37 @@ public class AStar : MonoBehaviour
                         if (!cellsToSearch.Contains(neighborPos))
                         {
                             cellsToSearch.Add(neighborPos);
+                        }
+                    }
+                }
+            }
+        }
+
+
+        // 8칸을 전부 검색하는 경우
+        else if(!isSerching4Cells)
+        {
+            for (float x = cellPos.x - cellWidth; x <= cellWidth + cellPos.x; x += cellHeight)
+            {
+                for (float y = cellPos.y - cellHeight; y <= cellHeight + cellPos.y; y += cellHeight)
+                {
+                    Vector2 neighborPos = new Vector2(x, y);
+                    if (cells.TryGetValue(neighborPos, out Cell c) && !searchedCells.Contains(neighborPos) && !cells[neighborPos].isWall)
+                    {
+                        int GcostToNeighbor = cells[cellPos].gCost + GetDistance(cellPos, neighborPos);
+                        if (GcostToNeighbor < cells[neighborPos].gCost)
+                        {
+                            Cell neighborNode = cells[neighborPos];
+
+                            neighborNode.connection = cellPos;
+                            neighborNode.gCost = GcostToNeighbor;
+                            neighborNode.hCost = GetDistance(neighborPos, endPos);
+                            neighborNode.fCost = neighborNode.gCost + neighborNode.hCost;
+
+                            if (!cellsToSearch.Contains(neighborPos))
+                            {
+                                cellsToSearch.Add(neighborPos);
+                            }
                         }
                     }
                 }
